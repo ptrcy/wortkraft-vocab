@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Intelligent German Vocabulary Learning Tool — Learn vocabulary in context with example sentences, audio, and spaced repetition.">
+  <title>WortKraft — Contextual Vocabulary Trainer</title>
+  <link rel="stylesheet" href="/src/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🇩🇪</text></svg>">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="site-header">
+      <div class="header-inner">
+        <div class="brand-logo" title="Go to Practice">
+          <span class="logo-badge">WORTKRAFT</span>
+          <span class="brand-title">Context Trainer <span class="lang-tag">German</span></span>
+        </div>
+
+        <nav class="nav-tabs" aria-label="Main navigation">
+          <button class="nav-btn active" data-tab="practice">
+            <span class="icon">📖</span>
+            <span>Practice</span>
+          </button>
+          <button class="nav-btn" data-tab="vocab">
+            <span class="icon">📚</span>
+            <span>Vocabulary</span>
+          </button>
+          <button class="nav-btn" data-tab="add">
+            <span class="icon">➕</span>
+            <span>Add Words</span>
+          </button>
+          <button class="nav-btn" data-tab="settings">
+            <span class="icon">⚙️</span>
+            <span>Settings</span>
+          </button>
+        </nav>
+
+        <div class="header-right">
+          <button class="btn-theme-toggle" id="btn-theme-toggle" title="Toggle Light / Dark theme">
+            ☀️
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main View Container -->
+    <main class="main-content" id="view-container">
+      <!-- Injected dynamically by main.js -->
+    </main>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+      <p>WortKraft — Client-side contextual vocabulary trainer with A-Res Spaced Repetition (0.4<sup>level</sup> weighting)</p>
+      <div class="footer-shortcuts">
+        <span>Keyboard Shortcuts:</span>
+        <span><kbd>R</kbd> Refresh Session</span>
+        <span><kbd>M</kbd> Toggle Meanings</span>
+        <span><kbd>1</kbd>–<kbd>5</kbd> Toggle Word Details</span>
+      </div>
+    </footer>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
