@@ -49,6 +49,9 @@ export class PracticeView {
     const n = Math.min(settings.sessionWordCount || 5, allWords.length);
     const sentencesPerWord = settings.sentencesPerWord || 2;
     this.sessionWords = createPracticeSession(allWords, n, sentencesPerWord);
+    // createPracticeSession mutates word.sentenceBag on the selected words (shuffle-bag
+    // state for no-repeat sentence picking) — persist it so the guarantee holds across sessions.
+    StorageService.saveWords(allWords);
     this.allMeaningsRevealed = false;
     this.render();
   }

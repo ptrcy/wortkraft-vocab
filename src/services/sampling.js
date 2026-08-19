@@ -58,27 +58,48 @@ export function sampleWordsARes(words, n = 5) {
 }
 
 /**
- * Pick k random distinct sentences from a word's sentence pool
- * @param {Array} sentences - Pool of sentences
+ * Pick k distinct sentences from a word's pool using a "shuffle bag": every
+ * sentence is guaranteed to be shown once before any sentence repeats. The
+ * draw order (word.sentenceBag) is persisted on the word object so the
+ * no-repeat guarantee holds across sessions/days, not just one sitting.
+ * Plain random sampling has no memory, so small pools (5-10 sentences)
+ * visibly repeat the same sentences far sooner than expected.
+ * @param {object} word - Word object (mutated: word.sentenceBag is updated)
  * @param {number} count - Number of sentences to pick (default 2)
  * @returns {Array}
  */
-export function pickRandomSentences(sentences, count = 2) {
-  if (!sentences || sentences.length === 0) return [];
-  if (sentences.length <= count) return [...sentences];
+export function pickSentencesNoRepeat(word, count = 2) {
+  const pool = word.sentences || [];
+  if (pool.length === 0) return [];
+  if (pool.length <= count) return [...pool];
 
-  return shuffle(sentences).slice(0, count);
+  const poolIds = new Set(pool.map(s => s.id));
+  let bag = Array.isArray(word.sentenceBag) ? word.sentenceBag.filter(id => poolIds.has(id)) : [];
+
+  if (bag.length < count) {
+    const queued = new Set(bag);
+    const remaining = pool.filter(s => !queued.has(s.id));
+    bag = [...bag, ...shuffle(remaining).map(s => s.id)];
+  }
+
+  const chosenIds = bag.slice(0, count);
+  word.sentenceBag = bag.slice(count);
+
+  const byId = new Map(pool.map(s => [s.id, s]));
+  return chosenIds.map(id => byId.get(id)).filter(Boolean);
 }
 
 /**
  * Prepare a practice session
  * Selects N words using A-Res, and for each word picks `sentencesPerWord` sentences.
+ * Mutates word.sentenceBag on the selected words (from allWords) as a side effect;
+ * callers should persist allWords afterward (e.g. StorageService.saveWords).
  */
 export function createPracticeSession(allWords, sessionCount = 5, sentencesPerWord = 2) {
   const selectedWords = sampleWordsARes(allWords, sessionCount);
 
   return selectedWords.map(word => {
-    const chosenSentences = pickRandomSentences(word.sentences || [], sentencesPerWord);
+    const chosenSentences = pickSentencesNoRepeat(word, sentencesPerWord);
     return {
       ...word,
       activeSentences: chosenSentences,
