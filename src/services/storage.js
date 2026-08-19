@@ -20,7 +20,7 @@ export const DEFAULT_SETTINGS = {
   defaultPlaybackRate: 1.0, // 1.0 preserves original audio quality without browser stretching
   theme: 'dark',
   autoPlayAudio: false,
-  targetLanguage: 'German'
+  cefrLevel: 'B1'
 };
 
 export function getTodayDateString() {
@@ -83,8 +83,9 @@ export class StorageService {
   static addWord(word) {
     const words = this.getWords();
     // Check for duplicate by normalized word
+    const key = (word.normalizedWord || '').toLowerCase();
     const existingIndex = words.findIndex(
-      w => w.normalizedWord.toLowerCase() === word.normalizedWord.toLowerCase()
+      w => (w.normalizedWord || '').toLowerCase() === key
     );
 
     if (existingIndex >= 0) {
@@ -98,9 +99,10 @@ export class StorageService {
 
   static addMultipleWords(newWords) {
     const words = this.getWords();
-    const map = new Map(words.map(w => [w.normalizedWord.toLowerCase(), w]));
+    const map = new Map(words.map(w => [(w.normalizedWord || '').toLowerCase(), w]));
     for (const nw of newWords) {
-      map.set(nw.normalizedWord.toLowerCase(), { ...(map.get(nw.normalizedWord.toLowerCase()) || {}), ...nw });
+      const key = (nw.normalizedWord || '').toLowerCase();
+      map.set(key, { ...(map.get(key) || {}), ...nw });
     }
     const updated = Array.from(map.values());
     this.saveWords(updated);

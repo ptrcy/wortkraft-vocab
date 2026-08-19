@@ -7,6 +7,7 @@ import { StorageService, getTodayDateString } from '../services/storage.js';
 import { audioDb } from '../services/db.js';
 import { audioPlayer } from '../services/audio-player.js';
 import { calculateWordWeight } from '../services/sampling.js';
+import { escapeHtml } from '../utils/html.js';
 
 export class VocabView {
   constructor(container, onNavigate) {
@@ -86,10 +87,11 @@ export class VocabView {
 
     // Filter words
     const filteredWords = allWords.filter(w => {
-      const matchSearch = !this.searchQuery || 
-        w.normalizedWord.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-        w.meaning.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-        (w.rawInput && w.rawInput.toLowerCase().includes(this.searchQuery.toLowerCase()));
+      const query = this.searchQuery.toLowerCase();
+      const matchSearch = !this.searchQuery ||
+        (w.normalizedWord || '').toLowerCase().includes(query) ||
+        (w.meaning || '').toLowerCase().includes(query) ||
+        (w.rawInput || '').toLowerCase().includes(query);
 
       let matchFilter = true;
       if (this.filterMastery === 'new') {
@@ -149,9 +151,9 @@ export class VocabView {
           <span class="search-icon">🔍</span>
           <input 
             type="text" 
-            id="vocab-search" 
-            placeholder="Search word, meaning, or expression..." 
-            value="${this.searchQuery}"
+            id="vocab-search"
+            placeholder="Search word, meaning, or expression..."
+            value="${escapeHtml(this.searchQuery)}"
             class="input-text"
           />
           ${this.searchQuery ? `<button class="btn-clear" id="btn-clear-search">✕</button>` : ''}
@@ -194,15 +196,15 @@ export class VocabView {
             <div class="vocab-item-summary">
               <div class="vocab-item-main" data-action="toggle-expand" data-word-id="${word.id}">
                 <div class="vocab-item-title-row">
-                  <span class="vocab-word">${word.normalizedWord || word.rawInput}</span>
-                  ${word.partOfSpeech ? `<span class="badge badge-pos">${word.partOfSpeech}</span>` : ''}
+                  <span class="vocab-word">${escapeHtml(word.normalizedWord || word.rawInput)}</span>
+                  ${word.partOfSpeech ? `<span class="badge badge-pos">${escapeHtml(word.partOfSpeech)}</span>` : ''}
                   <span class="badge badge-mastery ${word.masteryLevel >= 4 ? 'mastered' : ''}">
                     Level ${word.masteryLevel || 0}
                   </span>
                   <span class="weight-label">${weightPercent}% frequency</span>
                 </div>
                 <div class="vocab-item-meaning">
-                  ${word.meaning || '<span class="text-muted">No meaning provided</span>'}
+                  ${word.meaning ? escapeHtml(word.meaning) : '<span class="text-muted">No meaning provided</span>'}
                 </div>
               </div>
 
@@ -230,10 +232,10 @@ export class VocabView {
                   <div class="details-section">
                     <h4>Grammatical Details</h4>
                     <ul class="details-list">
-                      ${word.article ? `<li><strong>Article:</strong> ${word.article}</li>` : ''}
-                      ${word.plural ? `<li><strong>Plural:</strong> ${word.plural}</li>` : ''}
-                      ${word.verbForms ? `<li><strong>Verb Forms:</strong> ${word.verbForms}</li>` : ''}
-                      ${word.governingPrepositions ? `<li><strong>Governing:</strong> ${word.governingPrepositions}</li>` : ''}
+                      ${word.article ? `<li><strong>Article:</strong> ${escapeHtml(word.article)}</li>` : ''}
+                      ${word.plural ? `<li><strong>Plural:</strong> ${escapeHtml(word.plural)}</li>` : ''}
+                      ${word.verbForms ? `<li><strong>Verb Forms:</strong> ${escapeHtml(word.verbForms)}</li>` : ''}
+                      ${word.governingPrepositions ? `<li><strong>Governing:</strong> ${escapeHtml(word.governingPrepositions)}</li>` : ''}
                     </ul>
                   </div>
 
@@ -241,7 +243,7 @@ export class VocabView {
                     <div class="details-section">
                       <h4>Fixed Expressions</h4>
                       <ul class="details-list">
-                        ${word.fixedExpressions.map(e => `<li>${e}</li>`).join('')}
+                        ${word.fixedExpressions.map(e => `<li>${escapeHtml(e)}</li>`).join('')}
                       </ul>
                     </div>
                   ` : ''}
@@ -249,7 +251,7 @@ export class VocabView {
                   ${word.memoryHook ? `
                     <div class="details-section">
                       <h4>Memory Hook</h4>
-                      <p class="hook-text">🧠 ${word.memoryHook}</p>
+                      <p class="hook-text">🧠 ${escapeHtml(word.memoryHook)}</p>
                     </div>
                   ` : ''}
                 </div>
@@ -264,8 +266,8 @@ export class VocabView {
                     <div class="detail-sentence-row">
                       <span class="sentence-idx">${idx + 1}.</span>
                       <div class="sentence-content">
-                        <p class="sentence-german-text">${s.german}</p>
-                        ${s.englishHint ? `<p class="sentence-english-hint">${s.englishHint}</p>` : ''}
+                        <p class="sentence-german-text">${escapeHtml(s.german)}</p>
+                        ${s.englishHint ? `<p class="sentence-english-hint">${escapeHtml(s.englishHint)}</p>` : ''}
                       </div>
                       <button 
                         class="btn-icon-audio ${audioPlayer.isPlaying(s.id) ? 'playing' : ''} ${audioPlayer.isLoading(s.id) ? 'loading' : ''}"

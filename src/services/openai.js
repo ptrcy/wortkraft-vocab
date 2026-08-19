@@ -2,6 +2,8 @@
  * OpenAI Service for Generating German Vocabulary Sentences & Explanations
  */
 
+import { fetchWithRetry } from '../utils/http.js';
+
 function normalizeBaseUrl(url) {
   if (!url || typeof url !== 'string' || url.trim() === '') {
     return 'https://api.openai.com/v1';
@@ -45,7 +47,7 @@ export class OpenAIService {
    * @param {string} rawInput - e.g. "Sehnsucht" or "verabreden" or "der Feierabend"
    * @param {object} options - { apiKey, model, baseUrl }
    */
-  static async generateWordData(rawInput, { apiKey, model = 'gpt-4o-mini', baseUrl = '' }) {
+  static async generateWordData(rawInput, { apiKey, model = 'gpt-4o-mini', baseUrl = '', cefrLevel = 'B1' }) {
     if (!apiKey) {
       throw new Error('OpenAI API key is missing. Please set it in Settings.');
     }
@@ -60,6 +62,8 @@ export class OpenAIService {
     const systemPrompt = `You are an expert German language tutor creating vocabulary learning material for language learners.
 Your task is to analyze the given German word or expression, extract its grammatical details, write a concise explanation, and create exactly 10 SIMPLE, contextual German sentences.
 
+Target learner level: ${cefrLevel} (CEFR). Choose sentence complexity and target-word suitability appropriate for a ${cefrLevel} learner, while still keeping all surrounding context words simple (see rule 2 below) so meaning stays inferable.
+
 CRITICAL REQUIREMENT — SENTENCE SIMPLICITY & ACCESSIBILITY:
 1. Sentence Length: Keep sentences SHORT to MEDIUM (approx 7–14 words).
 2. Vocabulary Level: Use SIMPLE, high-frequency, everyday words (A1–A2 level) for all words EXCEPT the target word.
@@ -71,6 +75,7 @@ SPECIFICATIONS:
 1. Part of speech: The user entered "${trimmedInput}". The initial guess based on casing is "${initialPosHint}", but you MUST determine the TRUE accurate part of speech and gender/article.
 2. Sentences:
    - Provide EXACTLY 10 distinct, simple, everyday German sentences.
+   - Vary the grammatical subject (ich/du/er/sie/wir/sie), tense, and sentence type (statement/question) across the 10 sentences so the learner sees the word in diverse natural contexts.
    - For each sentence, provide a clear English translation/hint.
 3. Explanation:
    - Concise and high-yield.
@@ -104,7 +109,7 @@ You MUST respond with pure JSON conforming to this exact schema:
   ]
 }`;
 
-    const res = await fetch(endpoint, {
+    const res = await fetchWithRetry(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -144,6 +149,13 @@ You MUST respond with pure JSON conforming to this exact schema:
       german: s.german,
       englishHint: s.englishHint || s.english || ''
     }));
+
+    if (formattedSentences.length === 0) {
+      throw new Error('OpenAI response contained no usable sentences. Please retry.');
+    }
+    if (formattedSentences.length !== 10) {
+      console.warn(`Expected 10 sentences, got ${formattedSentences.length} for "${trimmedInput}".`);
+    }
 
     return {
       id: wordId,

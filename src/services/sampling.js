@@ -14,6 +14,18 @@ export function calculateWordWeight(masteryLevel = 0) {
 }
 
 /**
+ * Uniform in-place Fisher-Yates shuffle (sort(() => Math.random() - 0.5) is biased).
+ */
+function shuffle(arr) {
+  const result = [...arr];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+/**
  * A-Res weighted sampling without replacement
  * @param {Array} words - Array of word objects
  * @param {number} n - Number of items to sample
@@ -22,8 +34,7 @@ export function calculateWordWeight(masteryLevel = 0) {
 export function sampleWordsARes(words, n = 5) {
   if (!words || words.length === 0) return [];
   if (words.length <= n) {
-    // Shuffle array if fewer than or equal to n
-    return [...words].sort(() => Math.random() - 0.5);
+    return shuffle(words);
   }
 
   // Calculate A-Res key for each word: key = random ^ (1 / weight)
@@ -56,8 +67,7 @@ export function pickRandomSentences(sentences, count = 2) {
   if (!sentences || sentences.length === 0) return [];
   if (sentences.length <= count) return [...sentences];
 
-  const shuffled = [...sentences].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, count);
+  return shuffle(sentences).slice(0, count);
 }
 
 /**

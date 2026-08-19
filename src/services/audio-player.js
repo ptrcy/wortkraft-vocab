@@ -87,7 +87,7 @@ class AudioPlayerEngine {
           try {
             blob = await GeminiService.generateSpeechAudio(germanText, {
               apiKey: settings.geminiApiKey,
-              model: settings.geminiModel || 'gemini-2.0-flash',
+              model: settings.geminiModel || 'gemini-3.1-flash-tts-preview',
               voice: settings.geminiVoice || 'Puck'
             });
             // Cache to IndexedDB for instant future playback

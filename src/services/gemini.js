@@ -3,6 +3,8 @@
  * Produces clear, slightly slow German audio for vocabulary sentences
  */
 
+import { fetchWithRetry } from '../utils/http.js';
+
 export class GeminiService {
   /**
    * Test Gemini API Connection
@@ -72,7 +74,7 @@ ${germanSentence.trim()}`;
       }
     };
 
-    const res = await fetch(url, {
+    const res = await fetchWithRetry(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(requestBody)

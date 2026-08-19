@@ -8,6 +8,7 @@ import { OpenAIService } from '../services/openai.js';
 import { GeminiService } from '../services/gemini.js';
 import { audioDb } from '../services/db.js';
 import { SAMPLE_WORDS } from '../data/sample-words.js';
+import { escapeHtml } from '../utils/html.js';
 
 export class SettingsView {
   constructor(container, onNavigate, onThemeChange) {
@@ -43,10 +44,10 @@ export class SettingsView {
 
     try {
       await OpenAIService.testConnection(apiKey, model, baseUrl);
-      statusElem.innerHTML = `✓ Connection to OpenAI (${model}) successful!`;
+      statusElem.innerHTML = `✓ Connection to OpenAI (${escapeHtml(model)}) successful!`;
       statusElem.className = 'status-msg status-success';
     } catch (e) {
-      statusElem.innerHTML = `✕ Error: ${e.message}`;
+      statusElem.innerHTML = `✕ Error: ${escapeHtml(e.message)}`;
       statusElem.className = 'status-msg status-error';
     }
   }
@@ -75,7 +76,7 @@ export class SettingsView {
       this.testAudio = new Audio(audioUrl);
       this.testAudio.play();
     } catch (e) {
-      statusElem.innerHTML = `✕ Error: ${e.message}`;
+      statusElem.innerHTML = `✕ Error: ${escapeHtml(e.message)}`;
       statusElem.className = 'status-msg status-error';
     }
   }
@@ -92,7 +93,8 @@ export class SettingsView {
       sessionWordCount: parseInt(this.container.querySelector('#input-session-n')?.value, 10) || 5,
       sentencesPerWord: parseInt(this.container.querySelector('#input-sentences-per-word')?.value, 10) || 2,
       defaultPlaybackRate: parseFloat(this.container.querySelector('#select-playback-rate')?.value) || 1.0,
-      theme: this.container.querySelector('#select-theme')?.value || 'dark'
+      theme: this.container.querySelector('#select-theme')?.value || 'dark',
+      cefrLevel: this.container.querySelector('#select-cefr-level')?.value || 'B1'
     };
 
     StorageService.saveSettings(updated);
@@ -198,8 +200,8 @@ export class SettingsView {
                 type="password" 
                 id="input-openai-key" 
                 class="input-text" 
-                placeholder="sk-proj-..." 
-                value="${this.settings.openaiApiKey || ''}"
+                placeholder="sk-proj-..."
+                value="${escapeHtml(this.settings.openaiApiKey)}"
               />
               <button type="button" class="btn-toggle-pw" data-target="input-openai-key">👁️</button>
             </div>
@@ -211,9 +213,9 @@ export class SettingsView {
               <label for="input-openai-baseurl">OpenAI Base URL (Optional):</label>
               <input 
                 type="text" 
-                id="input-openai-baseurl" 
-                class="input-text" 
-                value="${this.settings.openaiBaseUrl || ''}"
+                id="input-openai-baseurl"
+                class="input-text"
+                value="${escapeHtml(this.settings.openaiBaseUrl)}"
                 placeholder="https://api.openai.com/v1"
               />
               <small class="form-hint">Default: <code>https://api.openai.com/v1</code>. Supports OpenRouter, Groq, Ollama, etc.</small>
@@ -223,9 +225,9 @@ export class SettingsView {
               <label for="input-openai-model">Model:</label>
               <input 
                 type="text" 
-                id="input-openai-model" 
-                class="input-text" 
-                value="${this.settings.openaiModel || 'gpt-4o-mini'}"
+                id="input-openai-model"
+                class="input-text"
+                value="${escapeHtml(this.settings.openaiModel || 'gpt-4o-mini')}"
                 placeholder="gpt-4o-mini, gpt-4o, etc."
               />
               <small class="form-hint">Recommended: <code>gpt-4o-mini</code>.</small>
@@ -257,8 +259,8 @@ export class SettingsView {
                 type="password" 
                 id="input-gemini-key" 
                 class="input-text" 
-                placeholder="AIzaSy..." 
-                value="${this.settings.geminiApiKey || ''}"
+                placeholder="AIzaSy..."
+                value="${escapeHtml(this.settings.geminiApiKey)}"
               />
               <button type="button" class="btn-toggle-pw" data-target="input-gemini-key">👁️</button>
             </div>
@@ -270,9 +272,9 @@ export class SettingsView {
               <label for="input-gemini-model">TTS Model:</label>
               <input 
                 type="text" 
-                id="input-gemini-model" 
-                class="input-text" 
-                value="${this.settings.geminiModel || 'gemini-3.1-flash-tts-preview'}"
+                id="input-gemini-model"
+                class="input-text"
+                value="${escapeHtml(this.settings.geminiModel || 'gemini-3.1-flash-tts-preview')}"
                 placeholder="gemini-3.1-flash-tts-preview"
               />
               <small class="form-hint">E.g. <code>gemini-3.1-flash-tts-preview</code> or <code>gemini-2.5-flash</code></small>
@@ -306,6 +308,16 @@ export class SettingsView {
               <h3>Practice Parameters & Spaced Repetition</h3>
               <p class="card-sub">Set session word count, sentences per card, and default audio playback speed.</p>
             </div>
+          </div>
+
+          <div class="form-group">
+            <label for="select-cefr-level">Target CEFR Level (for newly generated words):</label>
+            <select id="select-cefr-level" class="select-text">
+              ${['A1', 'A2', 'B1', 'B2', 'C1'].map(lvl => `
+                <option value="${lvl}" ${(this.settings.cefrLevel || 'B1') === lvl ? 'selected' : ''}>${lvl}</option>
+              `).join('')}
+            </select>
+            <small class="form-hint">Guides sentence/word difficulty when generating new vocabulary via OpenAI.</small>
           </div>
 
           <div class="grid-3col">

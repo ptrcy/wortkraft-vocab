@@ -7,6 +7,7 @@
 import { StorageService, getTodayDateString } from '../services/storage.js';
 import { createPracticeSession, calculateWordWeight } from '../services/sampling.js';
 import { audioPlayer } from '../services/audio-player.js';
+import { escapeHtml, escapeRegex } from '../utils/html.js';
 
 export class PracticeView {
   constructor(container, onNavigate) {
@@ -190,8 +191,8 @@ export class PracticeView {
             <div class="word-main-info">
               <div class="word-title-row">
                 <span class="word-number">#${index + 1}</span>
-                <h3 class="word-title">${word.normalizedWord || word.rawInput}</h3>
-                ${word.partOfSpeech ? `<span class="badge badge-pos">${word.partOfSpeech}</span>` : ''}
+                <h3 class="word-title">${escapeHtml(word.normalizedWord || word.rawInput)}</h3>
+                ${word.partOfSpeech ? `<span class="badge badge-pos">${escapeHtml(word.partOfSpeech)}</span>` : ''}
               </div>
               <div class="mastery-info-row">
                 <span class="badge badge-mastery ${word.masteryLevel >= 4 ? 'mastered' : ''}">
@@ -217,14 +218,15 @@ export class PracticeView {
 
           <section class="word-sentences-list">
             ${(word.activeSentences || []).map((s, sIdx) => {
-              let sentenceDisplay = s.german;
+              let sentenceDisplay = escapeHtml(s.german);
               if (this.maskWordInSentences) {
                 // Mask the word or stem
                 const stem = (word.normalizedWord || word.rawInput)
                   .replace(/^(der|die|das|sich)\s+/i, '')
                   .trim();
                 if (stem.length > 2) {
-                  const regex = new RegExp(`\\b(${stem.slice(0, Math.max(3, stem.length - 2))}[a-zäöüß]*)\\b`, 'gi');
+                  const stemPattern = escapeRegex(stem.slice(0, Math.max(3, stem.length - 2)));
+                  const regex = new RegExp(`\\b(${stemPattern}[a-zäöüß]*)\\b`, 'gi');
                   sentenceDisplay = sentenceDisplay.replace(regex, `<span class="cloze-blank">[ _____ ]</span>`);
                 }
               }
@@ -234,7 +236,7 @@ export class PracticeView {
                   <div class="sentence-text-wrap">
                     <span class="sentence-index">${sIdx + 1}.</span>
                     <p class="sentence-german">${sentenceDisplay}</p>
-                    ${isRevealed && s.englishHint ? `<p class="sentence-hint">${s.englishHint}</p>` : ''}
+                    ${isRevealed && s.englishHint ? `<p class="sentence-hint">${escapeHtml(s.englishHint)}</p>` : ''}
                   </div>
                   <div class="sentence-audio-wrap">
                     <button 
@@ -262,21 +264,21 @@ export class PracticeView {
               <div class="meaning-drawer open animate-fade-in">
                 <div class="meaning-header-row">
                   <span class="meaning-badge-label">✨ DEFINITION & GRAMMAR</span>
-                  ${word.article ? `<span class="badge badge-article">${word.article}</span>` : ''}
+                  ${word.article ? `<span class="badge badge-article">${escapeHtml(word.article)}</span>` : ''}
                 </div>
 
                 <div class="meaning-hero-card">
                   <span class="meaning-label-sub">English Meaning:</span>
-                  <p class="meaning-primary-text">${word.meaning || 'No meaning provided'}</p>
+                  <p class="meaning-primary-text">${escapeHtml(word.meaning) || 'No meaning provided'}</p>
                 </div>
 
                 ${word.plural || word.verbForms || word.governingPrepositions ? `
                   <div class="meaning-sub-section">
                     <span class="sub-section-title">Grammatical Forms</span>
                     <div class="grammar-chips">
-                      ${word.plural ? `<div class="chip"><span class="chip-label">Plural:</span> <strong>${word.plural}</strong></div>` : ''}
-                      ${word.verbForms ? `<div class="chip"><span class="chip-label">Verb Forms:</span> <strong>${word.verbForms}</strong></div>` : ''}
-                      ${word.governingPrepositions ? `<div class="chip"><span class="chip-label">Governing:</span> <strong>${word.governingPrepositions}</strong></div>` : ''}
+                      ${word.plural ? `<div class="chip"><span class="chip-label">Plural:</span> <strong>${escapeHtml(word.plural)}</strong></div>` : ''}
+                      ${word.verbForms ? `<div class="chip"><span class="chip-label">Verb Forms:</span> <strong>${escapeHtml(word.verbForms)}</strong></div>` : ''}
+                      ${word.governingPrepositions ? `<div class="chip"><span class="chip-label">Governing:</span> <strong>${escapeHtml(word.governingPrepositions)}</strong></div>` : ''}
                     </div>
                   </div>
                 ` : ''}
@@ -285,7 +287,7 @@ export class PracticeView {
                   <div class="meaning-sub-section fixed-expressions-card">
                     <span class="sub-section-title">💬 Fixed Expressions & Collocations</span>
                     <ul class="fixed-expressions-list">
-                      ${word.fixedExpressions.map(exp => `<li>${exp}</li>`).join('')}
+                      ${word.fixedExpressions.map(exp => `<li>${escapeHtml(exp)}</li>`).join('')}
                     </ul>
                   </div>
                 ` : ''}
@@ -295,7 +297,7 @@ export class PracticeView {
                     <span class="hook-icon">🧠</span>
                     <div class="hook-content">
                       <span class="hook-title">Memory Hook (Mnemonic)</span>
-                      <p class="hook-body">${word.memoryHook}</p>
+                      <p class="hook-body">${escapeHtml(word.memoryHook)}</p>
                     </div>
                   </div>
                 ` : ''}

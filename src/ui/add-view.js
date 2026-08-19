@@ -9,6 +9,7 @@ import { OpenAIService } from '../services/openai.js';
 import { GeminiService } from '../services/gemini.js';
 import { audioDb } from '../services/db.js';
 import { SAMPLE_WORDS } from '../data/sample-words.js';
+import { escapeHtml } from '../utils/html.js';
 
 export class AddView {
   constructor(container, onNavigate) {
@@ -44,7 +45,8 @@ export class AddView {
     const wordData = await OpenAIService.generateWordData(rawWord, {
       apiKey: settings.openaiApiKey,
       model: settings.openaiModel || 'gpt-4o-mini',
-      baseUrl: settings.openaiBaseUrl || ''
+      baseUrl: settings.openaiBaseUrl || '',
+      cefrLevel: settings.cefrLevel || 'B1'
     });
 
     onProgress(`Linguistic analysis complete. Synthesizing audio for ${wordData.sentences.length} sentences...`, 30);
@@ -60,7 +62,7 @@ export class AddView {
         try {
           const audioBlob = await GeminiService.generateSpeechAudio(sentence.german, {
             apiKey: settings.geminiApiKey,
-            model: settings.geminiModel || 'gemini-2.0-flash',
+            model: settings.geminiModel || 'gemini-3.1-flash-tts-preview',
             voice: settings.geminiVoice || 'Puck'
           });
           // Cache to IndexedDB
@@ -130,25 +132,37 @@ export class AddView {
 
     this.startGenerationUI();
 
-    try {
-      for (let i = 0; i < words.length; i++) {
-        const w = words[i];
-        const overallPct = Math.round((i / words.length) * 100);
-        this.updateProgress(`Processing word ${i + 1}/${words.length}: "${w}"...`, overallPct);
+    const succeeded = [];
+    const failed = [];
 
+    for (let i = 0; i < words.length; i++) {
+      const w = words[i];
+      const overallPct = Math.round((i / words.length) * 100);
+      this.updateProgress(`Processing word ${i + 1}/${words.length}: "${w}"...`, overallPct);
+
+      try {
         await this.processWordGeneration(w, settings, (subMsg, subPct) => {
           const stepWeight = 1 / words.length;
           const weightedPct = Math.round((i * stepWeight + (subPct / 100) * stepWeight) * 100);
           this.updateProgress(`[${i + 1}/${words.length}] ${subMsg}`, weightedPct);
         });
+        succeeded.push(w);
+      } catch (err) {
+        // Isolate per-word failures so one bad word doesn't abort the rest of the batch.
+        console.error(`Batch generation failed for "${w}":`, err);
+        failed.push({ word: w, error: err.message });
+        this.updateProgress(`⚠️ Failed to generate "${w}": ${err.message}`, overallPct);
       }
+    }
 
-      this.showSuccessFeedback(`${words.length} words`);
-    } catch (err) {
-      console.error(err);
-      this.showErrorFeedback(err.message);
-    } finally {
-      this.isGenerating = false;
+    this.isGenerating = false;
+
+    if (succeeded.length === 0) {
+      this.showErrorFeedback(
+        `All ${words.length} word(s) failed to generate. Last error: ${failed[failed.length - 1]?.error || 'Unknown error'}`
+      );
+    } else {
+      this.showBatchSummary(succeeded, failed);
     }
   }
 
@@ -192,13 +206,56 @@ export class AddView {
       <div class="card success-card animate-fade-in">
         <div class="success-icon">✨</div>
         <h3>Successfully Generated!</h3>
-        <p><strong>${wordLabel}</strong> was saved with 10 example sentences, audio, and linguistic breakdown.</p>
+        <p><strong>${escapeHtml(wordLabel)}</strong> was saved with 10 example sentences, audio, and linguistic breakdown.</p>
         <div class="success-buttons">
           <button class="btn btn-primary" id="btn-goto-practice">
             <span>📖 Practice Now</span>
           </button>
           <button class="btn btn-secondary" id="btn-add-more">
             <span>➕ Add More Words</span>
+          </button>
+        </div>
+      </div>
+    `;
+
+    progressWrap.querySelector('#btn-goto-practice')?.addEventListener('click', () => {
+      if (this.onNavigate) this.onNavigate('practice');
+    });
+
+    progressWrap.querySelector('#btn-add-more')?.addEventListener('click', () => {
+      this.render();
+    });
+  }
+
+  showBatchSummary(succeeded, failed) {
+    const progressWrap = this.container.querySelector('.generation-progress-wrap');
+    if (!progressWrap) return;
+
+    if (failed.length === 0) {
+      this.showSuccessFeedback(`${succeeded.length} words`);
+      return;
+    }
+
+    progressWrap.innerHTML = `
+      <div class="card success-card animate-fade-in">
+        <div class="success-icon">${succeeded.length > 0 ? '⚠️' : '❌'}</div>
+        <h3>Batch Generation Finished with Errors</h3>
+        <p>
+          <strong>${succeeded.length}</strong> of <strong>${succeeded.length + failed.length}</strong>
+          word(s) were generated and saved successfully. <strong>${failed.length}</strong> failed.
+        </p>
+        <div class="batch-failed-list">
+          <span class="sub-section-title">Failed words:</span>
+          <ul class="details-list">
+            ${failed.map(f => `<li><strong>${escapeHtml(f.word)}</strong> — ${escapeHtml(f.error)}</li>`).join('')}
+          </ul>
+        </div>
+        <div class="success-buttons">
+          <button class="btn btn-primary" id="btn-goto-practice">
+            <span>📖 Practice Now</span>
+          </button>
+          <button class="btn btn-secondary" id="btn-add-more">
+            <span>➕ Retry / Add More Words</span>
           </button>
         </div>
       </div>
@@ -221,7 +278,7 @@ export class AddView {
       <div class="card error-card animate-fade-in">
         <div class="error-icon">⚠️</div>
         <h3>Generation Error</h3>
-        <p class="error-message">${errorMessage}</p>
+        <p class="error-message">${escapeHtml(errorMessage)}</p>
         <div class="error-actions">
           <button class="btn btn-primary" id="btn-retry">
             <span>🔄 Retry</span>
@@ -245,13 +302,14 @@ export class AddView {
   render() {
     const settings = StorageService.getSettings();
     const hasKeys = !!settings.openaiApiKey;
+    const cefrLevel = settings.cefrLevel || 'B1';
 
     let html = `
       <div class="add-view-wrapper">
         <div class="add-header">
           <h2>Generate New Vocabulary</h2>
           <p class="add-subtitle">
-            Enter a German word or expression. The AI will automatically pre-generate 10 contextual B1 example sentences, audio pronunciation, and a concise linguistic breakdown.
+            Enter a German word or expression. The AI will automatically pre-generate 10 contextual ${escapeHtml(cefrLevel)}-level example sentences, audio pronunciation, and a concise linguistic breakdown. (Change the level in Settings.)
           </p>
         </div>
 
