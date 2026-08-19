@@ -17,6 +17,7 @@ export class AddView {
     this.onNavigate = onNavigate;
     this.isGenerating = false;
     this.mode = 'single'; // 'single' | 'batch'
+    this.sentenceCount = 10; // 5-10, chosen per generation run
   }
 
   init() {
@@ -38,15 +39,16 @@ export class AddView {
     }
   }
 
-  async processWordGeneration(rawWord, settings, onProgress) {
-    onProgress(`Generating 10 example sentences and explanation for "${rawWord}" via OpenAI...`, 15);
+  async processWordGeneration(rawWord, settings, sentenceCount, onProgress) {
+    onProgress(`Generating ${sentenceCount} example sentences and explanation for "${rawWord}" via OpenAI...`, 15);
 
     // 1. Generate text details with OpenAI
     const wordData = await OpenAIService.generateWordData(rawWord, {
       apiKey: settings.openaiApiKey,
       model: settings.openaiModel || 'gpt-4o-mini',
       baseUrl: settings.openaiBaseUrl || '',
-      cefrLevel: settings.cefrLevel || 'B1'
+      cefrLevel: settings.cefrLevel || 'B1',
+      sentenceCount
     });
 
     onProgress(`Linguistic analysis complete. Synthesizing audio for ${wordData.sentences.length} sentences...`, 30);
@@ -97,7 +99,7 @@ export class AddView {
     this.startGenerationUI();
 
     try {
-      await this.processWordGeneration(word, settings, (msg, pct) => {
+      await this.processWordGeneration(word, settings, this.sentenceCount, (msg, pct) => {
         this.updateProgress(msg, pct);
       });
 
@@ -141,7 +143,7 @@ export class AddView {
       this.updateProgress(`Processing word ${i + 1}/${words.length}: "${w}"...`, overallPct);
 
       try {
-        await this.processWordGeneration(w, settings, (subMsg, subPct) => {
+        await this.processWordGeneration(w, settings, this.sentenceCount, (subMsg, subPct) => {
           const stepWeight = 1 / words.length;
           const weightedPct = Math.round((i * stepWeight + (subPct / 100) * stepWeight) * 100);
           this.updateProgress(`[${i + 1}/${words.length}] ${subMsg}`, weightedPct);
@@ -206,7 +208,7 @@ export class AddView {
       <div class="card success-card animate-fade-in">
         <div class="success-icon">✨</div>
         <h3>Successfully Generated!</h3>
-        <p><strong>${escapeHtml(wordLabel)}</strong> was saved with 10 example sentences, audio, and linguistic breakdown.</p>
+        <p><strong>${escapeHtml(wordLabel)}</strong> was saved with example sentences, audio, and linguistic breakdown.</p>
         <div class="success-buttons">
           <button class="btn btn-primary" id="btn-goto-practice">
             <span>📖 Practice Now</span>
@@ -309,7 +311,7 @@ export class AddView {
         <div class="add-header">
           <h2>Generate New Vocabulary</h2>
           <p class="add-subtitle">
-            Enter a German word or expression. The AI will automatically pre-generate 10 contextual ${escapeHtml(cefrLevel)}-level example sentences, audio pronunciation, and a concise linguistic breakdown. (Change the level in Settings.)
+            Enter a German word or expression. The AI will automatically pre-generate contextual ${escapeHtml(cefrLevel)}-level example sentences, audio pronunciation, and a concise linguistic breakdown. (Change the level in Settings.)
           </p>
         </div>
 
@@ -317,7 +319,7 @@ export class AddView {
           <div class="alert-banner alert-warning">
             <span class="alert-icon">🔑</span>
             <div class="alert-text">
-              <strong>OpenAI API Key Required:</strong> To automatically generate 10 sentences and explanations, please configure your API key in Settings.
+              <strong>OpenAI API Key Required:</strong> To automatically generate example sentences and explanations, please configure your API key in Settings.
             </div>
             <button class="btn btn-sm btn-secondary" id="btn-quick-settings">Go to Settings</button>
           </div>
@@ -330,6 +332,21 @@ export class AddView {
           <button class="tab-btn ${this.mode === 'batch' ? 'active' : ''}" id="tab-batch">
             Batch Input
           </button>
+        </div>
+
+        <div class="sentence-count-control card">
+          <div class="form-group">
+            <label for="input-sentence-count">Sentences to Generate per Word: <strong id="sentence-count-label">${this.sentenceCount}</strong></label>
+            <input
+              type="range"
+              id="input-sentence-count"
+              min="5"
+              max="10"
+              step="1"
+              value="${this.sentenceCount}"
+            />
+            <small class="form-hint">Applies to this generation run (single word or the whole batch). Practice sessions still pick just a few sentences per round.</small>
+          </div>
         </div>
 
         <div class="add-form-container card">
@@ -356,7 +373,7 @@ export class AddView {
               <div class="form-actions">
                 <button type="submit" class="btn btn-primary btn-lg">
                   <span class="icon">✨</span>
-                  <span>Pre-generate 10 Sentences + Audio</span>
+                  <span id="btn-single-submit-label">Pre-generate ${this.sentenceCount} Sentences + Audio</span>
                 </button>
               </div>
             </form>
@@ -371,7 +388,7 @@ export class AddView {
                   placeholder="Sehnsucht&#10;Feierabend&#10;sich verabreden&#10;Gemütlichkeit&#10;nachvollziehen"
                   required
                 ></textarea>
-                <small class="form-hint">Each word will be pre-generated sequentially with 10 example sentences and audio.</small>
+                <small class="form-hint" id="batch-sentence-hint">Each word will be pre-generated sequentially with ${this.sentenceCount} example sentences and audio.</small>
               </div>
 
               <div class="form-actions">
@@ -447,6 +464,20 @@ export class AddView {
         hintElem.textContent = this.getPosHint(e.target.value);
       });
     }
+
+    // Sentence count slider (5-10)
+    this.container.querySelector('#input-sentence-count')?.addEventListener('input', (e) => {
+      this.sentenceCount = parseInt(e.target.value, 10) || 10;
+
+      const label = this.container.querySelector('#sentence-count-label');
+      if (label) label.textContent = String(this.sentenceCount);
+
+      const submitLabel = this.container.querySelector('#btn-single-submit-label');
+      if (submitLabel) submitLabel.textContent = `Pre-generate ${this.sentenceCount} Sentences + Audio`;
+
+      const batchHint = this.container.querySelector('#batch-sentence-hint');
+      if (batchHint) batchHint.textContent = `Each word will be pre-generated sequentially with ${this.sentenceCount} example sentences and audio.`;
+    });
 
     // Single form submit
     this.container.querySelector('#form-single-word')?.addEventListener('submit', (e) => {

@@ -217,7 +217,7 @@ export class VocabView {
                     `).join('')}
                   </select>
                 </div>
-                <button class="btn btn-icon btn-secondary" data-action="toggle-expand" data-word-id="${word.id}" title="View all 10 sentences">
+                <button class="btn btn-icon btn-secondary" data-action="toggle-expand" data-word-id="${word.id}" title="View all ${word.sentences?.length || 0} sentences">
                   <span>${isExpanded ? '▲' : '▼'} (${word.sentences?.length || 0} Sentences)</span>
                 </button>
                 <button class="btn btn-icon btn-danger" data-action="delete-word" data-word-id="${word.id}" title="Delete word">

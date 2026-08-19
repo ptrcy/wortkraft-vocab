@@ -189,7 +189,7 @@ export class SettingsView {
             <span class="sec-icon">🤖</span>
             <div>
               <h3>OpenAI API (Text & Example Sentences)</h3>
-              <p class="card-sub">Used for linguistic analysis and generating 10 contextual B1 example sentences per word.</p>
+              <p class="card-sub">Used for linguistic analysis and generating 5-10 contextual example sentences per word (count and CEFR level chosen when adding words).</p>
             </div>
           </div>
 
@@ -344,7 +344,7 @@ export class SettingsView {
                 max="5" 
                 value="${this.settings.sentencesPerWord || 2}"
               />
-              <small class="form-hint">Default: 2 from the 10-sentence pool</small>
+              <small class="form-hint">Default: 2, picked from each word's generated sentence pool (5-10 sentences)</small>
             </div>
 
             <div class="form-group">

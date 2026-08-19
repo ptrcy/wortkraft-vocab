@@ -43,24 +43,25 @@ export class OpenAIService {
   }
 
   /**
-   * Generate ~10 B1 sentences and concise explanation for a German word/expression
+   * Generate 5-10 contextual sentences and concise explanation for a German word/expression
    * @param {string} rawInput - e.g. "Sehnsucht" or "verabreden" or "der Feierabend"
-   * @param {object} options - { apiKey, model, baseUrl }
+   * @param {object} options - { apiKey, model, baseUrl, cefrLevel, sentenceCount }
    */
-  static async generateWordData(rawInput, { apiKey, model = 'gpt-4o-mini', baseUrl = '', cefrLevel = 'B1' }) {
+  static async generateWordData(rawInput, { apiKey, model = 'gpt-4o-mini', baseUrl = '', cefrLevel = 'B1', sentenceCount = 10 }) {
     if (!apiKey) {
       throw new Error('OpenAI API key is missing. Please set it in Settings.');
     }
 
     const base = normalizeBaseUrl(baseUrl);
     const endpoint = `${base}/chat/completions`;
+    const count = Math.min(10, Math.max(5, parseInt(sentenceCount, 10) || 10));
 
     const trimmedInput = rawInput.trim();
     const firstChar = trimmedInput.charAt(0);
     const initialPosHint = firstChar === firstChar.toUpperCase() && isNaN(firstChar) ? 'noun' : 'verb/other';
 
     const systemPrompt = `You are an expert German language tutor creating vocabulary learning material for language learners.
-Your task is to analyze the given German word or expression, extract its grammatical details, write a concise explanation, and create exactly 10 SIMPLE, contextual German sentences.
+Your task is to analyze the given German word or expression, extract its grammatical details, write a concise explanation, and create exactly ${count} SIMPLE, contextual German sentences.
 
 Target learner level: ${cefrLevel} (CEFR). Choose sentence complexity and target-word suitability appropriate for a ${cefrLevel} learner, while still keeping all surrounding context words simple (see rule 2 below) so meaning stays inferable.
 
@@ -74,8 +75,8 @@ CRITICAL REQUIREMENT — SENTENCE SIMPLICITY & ACCESSIBILITY:
 SPECIFICATIONS:
 1. Part of speech: The user entered "${trimmedInput}". The initial guess based on casing is "${initialPosHint}", but you MUST determine the TRUE accurate part of speech and gender/article.
 2. Sentences:
-   - Provide EXACTLY 10 distinct, simple, everyday German sentences.
-   - Vary the grammatical subject (ich/du/er/sie/wir/sie), tense, and sentence type (statement/question) across the 10 sentences so the learner sees the word in diverse natural contexts.
+   - Provide EXACTLY ${count} distinct, simple, everyday German sentences.
+   - Vary the grammatical subject (ich/du/er/sie/wir/sie), tense, and sentence type (statement/question) across the ${count} sentences so the learner sees the word in diverse natural contexts.
    - For each sentence, provide a clear English translation/hint.
 3. Explanation:
    - Concise and high-yield.
@@ -105,7 +106,7 @@ You MUST respond with pure JSON conforming to this exact schema:
   "memoryHook": "Combines 'sehnen' (to yearn) and 'Sucht' (addiction/craving) -> an addiction-like yearning.",
   "sentences": [
     { "id": "s1", "german": "Wenn er im Winter die alten Urlaubsfotos ansieht, spürt er eine tiefe Sehnsucht nach Sonne und Meer.", "englishHint": "When he looks at old vacation photos in winter, he feels a deep longing for sun and sea." },
-    ... exactly 10 sentences with IDs s1 to s10 ...
+    ... exactly ${count} sentences with IDs s1 to s${count} ...
   ]
 }`;
 
@@ -153,8 +154,8 @@ You MUST respond with pure JSON conforming to this exact schema:
     if (formattedSentences.length === 0) {
       throw new Error('OpenAI response contained no usable sentences. Please retry.');
     }
-    if (formattedSentences.length !== 10) {
-      console.warn(`Expected 10 sentences, got ${formattedSentences.length} for "${trimmedInput}".`);
+    if (formattedSentences.length !== count) {
+      console.warn(`Expected ${count} sentences, got ${formattedSentences.length} for "${trimmedInput}".`);
     }
 
     return {
