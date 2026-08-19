@@ -90,6 +90,7 @@ export class SettingsView {
       geminiApiKey: this.container.querySelector('#input-gemini-key')?.value.trim() || '',
       geminiModel: this.container.querySelector('#input-gemini-model')?.value.trim() || 'gemini-3.1-flash-tts-preview',
       geminiVoice: this.container.querySelector('#select-gemini-voice')?.value || 'Puck',
+      audioWorkers: Math.max(1, Math.min(5, parseInt(this.container.querySelector('#input-audio-workers')?.value, 10) || 2)),
       sessionWordCount: parseInt(this.container.querySelector('#input-session-n')?.value, 10) || 5,
       sentencesPerWord: parseInt(this.container.querySelector('#input-sentences-per-word')?.value, 10) || 2,
       defaultPlaybackRate: parseFloat(this.container.querySelector('#select-playback-rate')?.value) || 1.0,
@@ -290,6 +291,19 @@ export class SettingsView {
                 <option value="Aoede" ${this.settings.geminiVoice === 'Aoede' ? 'selected' : ''}>Aoede (Melodic)</option>
               </select>
             </div>
+          </div>
+
+          <div class="form-group">
+            <label for="input-audio-workers">Concurrent Audio Workers:</label>
+            <input
+              type="number"
+              id="input-audio-workers"
+              class="input-text"
+              min="1"
+              max="5"
+              value="${this.settings.audioWorkers || 2}"
+            />
+            <small class="form-hint">How many sentences to synthesize via Gemini TTS at once when generating a word (1-5). Default: 2. Higher speeds up generation but may hit rate limits sooner.</small>
           </div>
 
           <div class="action-row">

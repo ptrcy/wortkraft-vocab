@@ -10,6 +10,7 @@ import { GeminiService } from '../services/gemini.js';
 import { audioDb } from '../services/db.js';
 import { SAMPLE_WORDS } from '../data/sample-words.js';
 import { escapeHtml } from '../utils/html.js';
+import { runWithConcurrency } from '../utils/concurrency.js';
 
 export class AddView {
   constructor(container, onNavigate) {
@@ -56,11 +57,10 @@ export class AddView {
     // 2. Pre-generate Audio via Gemini TTS if API key is present
     if (settings.geminiApiKey && wordData.sentences.length > 0) {
       const total = wordData.sentences.length;
-      for (let i = 0; i < total; i++) {
-        const sentence = wordData.sentences[i];
-        const progressPct = 30 + Math.round(((i + 1) / total) * 65);
-        onProgress(`Synthesizing Gemini TTS Audio (${i + 1}/${total}) for "${sentence.german.slice(0, 30)}..."`, progressPct);
+      const workers = Math.max(1, Math.min(5, parseInt(settings.audioWorkers, 10) || 2));
+      let completed = 0;
 
+      await runWithConcurrency(wordData.sentences, async (sentence) => {
         try {
           const audioBlob = await GeminiService.generateSpeechAudio(sentence.german, {
             apiKey: settings.geminiApiKey,
@@ -71,8 +71,12 @@ export class AddView {
           await audioDb.saveAudio(sentence.id, audioBlob);
         } catch (audioErr) {
           console.warn(`Audio generation failed for sentence ${sentence.id}:`, audioErr);
+        } finally {
+          completed++;
+          const progressPct = 30 + Math.round((completed / total) * 65);
+          onProgress(`Synthesizing Gemini TTS Audio (${completed}/${total})...`, progressPct);
         }
-      }
+      }, workers);
     } else {
       onProgress(`No Gemini API key set — audio will play on-demand using browser speech synthesis.`, 90);
     }

@@ -20,7 +20,8 @@ export const DEFAULT_SETTINGS = {
   defaultPlaybackRate: 1.0, // 1.0 preserves original audio quality without browser stretching
   theme: 'dark',
   autoPlayAudio: false,
-  cefrLevel: 'B1'
+  cefrLevel: 'B1',
+  audioWorkers: 2 // concurrent Gemini TTS requests during word generation
 };
 
 export function getTodayDateString() {
