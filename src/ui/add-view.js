@@ -17,8 +17,7 @@ export class AddView {
     this.container = container;
     this.onNavigate = onNavigate;
     this.isGenerating = false;
-    this.mode = 'single'; // 'single' | 'batch'
-    this.sentenceCount = 10; // 5-10, chosen per generation run
+    this.sentenceCount = 4; // 4-10, chosen per generation run
   }
 
   init() {
@@ -27,17 +26,6 @@ export class AddView {
 
   destroy() {
     // cleanup
-  }
-
-  getPosHint(text) {
-    if (!text || text.trim().length === 0) return '';
-    const clean = text.trim();
-    const first = clean.charAt(0);
-    if (first === first.toUpperCase() && isNaN(first)) {
-      return 'Hint: Capitalized → likely Noun';
-    } else {
-      return 'Hint: Lowercase → likely Verb / Adjective';
-    }
   }
 
   async processWordGeneration(rawWord, settings, sentenceCount, onProgress) {
@@ -87,38 +75,9 @@ export class AddView {
     return wordData;
   }
 
-  async handleSingleSubmit(e) {
+  async handleGenerateSubmit(e) {
     e.preventDefault();
-    const input = this.container.querySelector('#input-single-word');
-    const word = input?.value.trim();
-    if (!word) return;
-
-    const settings = StorageService.getSettings();
-    if (!settings.openaiApiKey) {
-      alert('Please configure your OpenAI API key in Settings first to generate sentences.');
-      if (this.onNavigate) this.onNavigate('settings');
-      return;
-    }
-
-    this.startGenerationUI();
-
-    try {
-      await this.processWordGeneration(word, settings, this.sentenceCount, (msg, pct) => {
-        this.updateProgress(msg, pct);
-      });
-
-      this.showSuccessFeedback(word);
-    } catch (err) {
-      console.error(err);
-      this.showErrorFeedback(err.message);
-    } finally {
-      this.isGenerating = false;
-    }
-  }
-
-  async handleBatchSubmit(e) {
-    e.preventDefault();
-    const textarea = this.container.querySelector('#input-batch-words');
+    const textarea = this.container.querySelector('#input-words');
     const rawText = textarea?.value.trim();
     if (!rawText) return;
 
@@ -137,6 +96,21 @@ export class AddView {
     }
 
     this.startGenerationUI();
+
+    if (words.length === 1) {
+      try {
+        await this.processWordGeneration(words[0], settings, this.sentenceCount, (msg, pct) => {
+          this.updateProgress(msg, pct);
+        });
+        this.showSuccessFeedback(words[0]);
+      } catch (err) {
+        console.error(err);
+        this.showErrorFeedback(err.message);
+      } finally {
+        this.isGenerating = false;
+      }
+      return;
+    }
 
     const succeeded = [];
     const failed = [];
@@ -315,7 +289,7 @@ export class AddView {
         <div class="add-header">
           <h2>Generate New Vocabulary</h2>
           <p class="add-subtitle">
-            Enter a German word or expression. The AI will automatically pre-generate contextual ${escapeHtml(cefrLevel)}-level example sentences, audio pronunciation, and a concise linguistic breakdown. (Change the level in Settings.)
+            Enter one or more German words or expressions. The AI will automatically pre-generate contextual ${escapeHtml(cefrLevel)}-level example sentences, audio pronunciation, and a concise linguistic breakdown for each. (Change the level in Settings.)
           </p>
         </div>
 
@@ -329,80 +303,36 @@ export class AddView {
           </div>
         ` : ''}
 
-        <div class="add-tabs">
-          <button class="tab-btn ${this.mode === 'single' ? 'active' : ''}" id="tab-single">
-            Single Word
-          </button>
-          <button class="tab-btn ${this.mode === 'batch' ? 'active' : ''}" id="tab-batch">
-            Batch Input
-          </button>
-        </div>
-
-        <div class="sentence-count-control card">
-          <div class="form-group">
-            <label for="input-sentence-count">Sentences to Generate per Word: <strong id="sentence-count-label">${this.sentenceCount}</strong></label>
-            <input
-              type="range"
-              id="input-sentence-count"
-              min="5"
-              max="10"
-              step="1"
-              value="${this.sentenceCount}"
-            />
-            <small class="form-hint">Applies to this generation run (single word or the whole batch). Practice sessions still pick just a few sentences per round.</small>
-          </div>
-        </div>
-
         <div class="add-form-container card">
-          ${this.mode === 'single' ? `
-            <form id="form-single-word" class="add-form">
-              <div class="form-group">
-                <label for="input-single-word">German Word or Expression:</label>
-                <div class="input-with-hint">
-                  <input 
-                    type="text" 
-                    id="input-single-word" 
-                    class="input-text input-lg" 
-                    placeholder="e.g. Sehnsucht, verabreden, Feierabend, sich freuen auf..." 
-                    autocomplete="off"
-                    required
-                  />
-                  <div class="pos-live-hint" id="pos-live-hint">
-                    Hint: Capitalized words suggest Noun, lowercase suggests Verb/Adjective.
-                  </div>
-                </div>
-                <small class="form-hint">Article (der/die/das) is optional — the AI determines the correct gender and part of speech automatically.</small>
+          <form id="form-words" class="add-form">
+            <div class="form-group">
+              <label id="sentence-count-heading">Sentences to Generate per Word:</label>
+              <div class="stepper-control">
+                <button type="button" class="stepper-btn" id="btn-sentence-decrement" aria-label="Decrease sentence count">−</button>
+                <span class="stepper-value" id="sentence-count-label">${this.sentenceCount}</span>
+                <button type="button" class="stepper-btn" id="btn-sentence-increment" aria-label="Increase sentence count">+</button>
               </div>
+            </div>
 
-              <div class="form-actions">
-                <button type="submit" class="btn btn-primary btn-lg">
-                  <span class="icon">✨</span>
-                  <span id="btn-single-submit-label">Pre-generate ${this.sentenceCount} Sentences + Audio</span>
-                </button>
-              </div>
-            </form>
-          ` : `
-            <form id="form-batch-words" class="add-form">
-              <div class="form-group">
-                <label for="input-batch-words">Enter multiple words (separated by commas or newlines):</label>
-                <textarea 
-                  id="input-batch-words" 
-                  class="input-textarea" 
-                  rows="6" 
-                  placeholder="Sehnsucht&#10;Feierabend&#10;sich verabreden&#10;Gemütlichkeit&#10;nachvollziehen"
-                  required
-                ></textarea>
-                <small class="form-hint" id="batch-sentence-hint">Each word will be pre-generated sequentially with ${this.sentenceCount} example sentences and audio.</small>
-              </div>
+            <div class="form-group">
+              <label for="input-words">German Words or Expressions:</label>
+              <textarea
+                id="input-words"
+                class="input-textarea"
+                rows="6"
+                placeholder="Sehnsucht&#10;Feierabend&#10;sich verabreden&#10;Gemütlichkeit&#10;nachvollziehen"
+                required
+              ></textarea>
+              <small class="form-hint">One word or expression per line (or separated by commas). Article (der/die/das) is optional — the AI determines gender and part of speech automatically.</small>
+            </div>
 
-              <div class="form-actions">
-                <button type="submit" class="btn btn-primary btn-lg">
-                  <span class="icon">✨</span>
-                  <span>Generate Batch</span>
-                </button>
-              </div>
-            </form>
-          `}
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary btn-lg">
+                <span class="icon">✨</span>
+                <span>Generate Vocabulary</span>
+              </button>
+            </div>
+          </form>
         </div>
 
         <!-- Progress wrap (hidden initially) -->
@@ -442,16 +372,6 @@ export class AddView {
   }
 
   bindEvents() {
-    this.container.querySelector('#tab-single')?.addEventListener('click', () => {
-      this.mode = 'single';
-      this.render();
-    });
-
-    this.container.querySelector('#tab-batch')?.addEventListener('click', () => {
-      this.mode = 'batch';
-      this.render();
-    });
-
     this.container.querySelector('#btn-quick-settings')?.addEventListener('click', () => {
       if (this.onNavigate) this.onNavigate('settings');
     });
@@ -460,37 +380,25 @@ export class AddView {
       this.handleLoadSampleWords();
     });
 
-    // POS live hint
-    const singleInput = this.container.querySelector('#input-single-word');
-    const hintElem = this.container.querySelector('#pos-live-hint');
-    if (singleInput && hintElem) {
-      singleInput.addEventListener('input', (e) => {
-        hintElem.textContent = this.getPosHint(e.target.value);
-      });
-    }
-
-    // Sentence count slider (5-10)
-    this.container.querySelector('#input-sentence-count')?.addEventListener('input', (e) => {
-      this.sentenceCount = parseInt(e.target.value, 10) || 10;
-
+    // Sentence count stepper (4-10)
+    const updateSentenceCountLabel = () => {
       const label = this.container.querySelector('#sentence-count-label');
       if (label) label.textContent = String(this.sentenceCount);
+    };
 
-      const submitLabel = this.container.querySelector('#btn-single-submit-label');
-      if (submitLabel) submitLabel.textContent = `Pre-generate ${this.sentenceCount} Sentences + Audio`;
-
-      const batchHint = this.container.querySelector('#batch-sentence-hint');
-      if (batchHint) batchHint.textContent = `Each word will be pre-generated sequentially with ${this.sentenceCount} example sentences and audio.`;
+    this.container.querySelector('#btn-sentence-decrement')?.addEventListener('click', () => {
+      this.sentenceCount = Math.max(4, this.sentenceCount - 1);
+      updateSentenceCountLabel();
     });
 
-    // Single form submit
-    this.container.querySelector('#form-single-word')?.addEventListener('submit', (e) => {
-      this.handleSingleSubmit(e);
+    this.container.querySelector('#btn-sentence-increment')?.addEventListener('click', () => {
+      this.sentenceCount = Math.min(10, this.sentenceCount + 1);
+      updateSentenceCountLabel();
     });
 
-    // Batch form submit
-    this.container.querySelector('#form-batch-words')?.addEventListener('submit', (e) => {
-      this.handleBatchSubmit(e);
+    // Word generation form submit
+    this.container.querySelector('#form-words')?.addEventListener('submit', (e) => {
+      this.handleGenerateSubmit(e);
     });
   }
 }

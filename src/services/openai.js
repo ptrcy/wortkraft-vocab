@@ -43,18 +43,18 @@ export class OpenAIService {
   }
 
   /**
-   * Generate 5-10 contextual sentences and concise explanation for a German word/expression
+   * Generate 4-10 contextual sentences and concise explanation for a German word/expression
    * @param {string} rawInput - e.g. "Sehnsucht" or "verabreden" or "der Feierabend"
    * @param {object} options - { apiKey, model, baseUrl, cefrLevel, sentenceCount }
    */
-  static async generateWordData(rawInput, { apiKey, model = 'gpt-4o-mini', baseUrl = '', cefrLevel = 'B1', sentenceCount = 10 }) {
+  static async generateWordData(rawInput, { apiKey, model = 'gpt-4o-mini', baseUrl = '', cefrLevel = 'B1', sentenceCount = 4 }) {
     if (!apiKey) {
       throw new Error('OpenAI API key is missing. Please set it in Settings.');
     }
 
     const base = normalizeBaseUrl(baseUrl);
     const endpoint = `${base}/chat/completions`;
-    const count = Math.min(10, Math.max(5, parseInt(sentenceCount, 10) || 10));
+    const count = Math.min(10, Math.max(4, parseInt(sentenceCount, 10) || 4));
 
     const trimmedInput = rawInput.trim();
     const firstChar = trimmedInput.charAt(0);
